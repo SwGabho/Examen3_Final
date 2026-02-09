@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChatApp - Mensajería en Tiempo Real</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+</head>
+<body>
+    <!-- Pantalla de inicio de sesión -->
+    <div id="login-screen" class="login-screen">
+        <div class="login-container">
+            <div class="login-header">
+                <svg viewBox="0 0 24 24" width="80" height="80" class="login-icon">
+                    <path fill="#25D366" d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.38 0-2.67-.34-3.83-.93l-.27-.16-2.83.48.48-2.83-.16-.27C4.34 14.67 4 13.38 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
+                    <path fill="#25D366" d="M16.5 13.92c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.12-.17.25-.64.81-.78.97-.14.17-.29.19-.54.06-.25-.12-1.05-.39-2-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.02-.38.11-.51.11-.11.25-.29.37-.43s.17-.25.25-.41c.08-.17.04-.31-.02-.43s-.56-1.34-.76-1.84c-.2-.48-.41-.42-.56-.43h-.48c-.17 0-.43.06-.66.31-.23.25-.87.85-.87 2.07s.89 2.4 1.01 2.56c.12.17 1.75 2.67 4.23 3.74.59.25 1.05.4 1.41.51.59.19 1.13.16 1.56.1.48-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.14-1.18s-.22-.16-.47-.28z"/>
+                </svg>
+                <h1>ChatApp</h1>
+                <p>Ingresa tu nombre para comenzar a chatear</p>
+            </div>
+            <div class="login-form">
+                <input type="text" id="username-input" placeholder="Escribe tu nombre..." maxlength="50" autocomplete="off">
+                <button id="login-btn">Iniciar Chat</button>
+                <div id="login-error" class="error-message"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Aplicación principal de chat -->
+    <div id="chat-app" class="chat-app" style="display: none;">
+        <!-- Barra lateral izquierda -->
+        <div class="sidebar">
+            <!-- Header de la barra lateral -->
+            <div class="sidebar-header">
+                <div class="user-info">
+                    <div class="user-avatar">
+                        <span id="user-initial">U</span>
+                    </div>
+                    <span id="current-username">Usuario</span>
+                </div>
+            </div>
+
+            <!-- Pestañas -->
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="salas">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-5-9h10v2H7z"/>
+                    </svg>
+                    Salas
+                </button>
+                <button class="tab-btn" data-tab="usuarios">
+                    <svg viewBox="0 0 24 24" width="20" height="20">
+                        <path fill="currentColor" d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                    </svg>
+                    Usuarios
+                </button>
+            </div>
+
+            <!-- Búsqueda -->
+            <div class="search-container">
+                <input type="text" id="search-input" placeholder="Buscar sala o contacto...">
+            </div>
+
+            <!-- Panel de Salas -->
+            <div class="tab-content active" id="salas-panel">
+                <div class="action-btn-container">
+                    <button id="crear-sala-btn" class="action-btn">
+                        <svg viewBox="0 0 24 24" width="20" height="20">
+                            <path fill="currentColor" d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
+                        </svg>
+                        Crear Nueva Sala
+                    </button>
+                </div>
+                <div id="salas-lista" class="lista-contactos">
+                    <!-- Las salas se cargarán dinámicamente -->
+                </div>
+            </div>
+
+            <!-- Panel de Usuarios -->
+            <div class="tab-content" id="usuarios-panel">
+                <div id="usuarios-lista" class="lista-contactos">
+                    <!-- Los usuarios se cargarán dinámicamente -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Área de chat principal -->
+        <div class="main-chat">
+            <!-- Estado inicial -->
+            <div id="chat-placeholder" class="chat-placeholder">
+                <svg viewBox="0 0 24 24" width="120" height="120">
+                    <path fill="#e0e0e0" d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z"/>
+                </svg>
+                <h2>Bienvenido a ChatApp</h2>
+                <p>Selecciona una sala o un usuario para comenzar a chatear</p>
+            </div>
+
+            <!-- Contenedor del chat activo -->
+            <div id="chat-container" style="display: none;">
+                <!-- Header del chat -->
+                <div class="chat-header">
+                    <div class="chat-info">
+                        <div class="chat-avatar">
+                            <span id="chat-initial">S</span>
+                        </div>
+                        <div>
+                            <h3 id="chat-title">Sala General</h3>
+                            <p id="chat-subtitle" class="chat-subtitle">0 participantes</p>
+                        </div>
+                    </div>
+                    <button id="info-btn" class="icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Área de mensajes -->
+                <div id="mensajes-container" class="mensajes-container">
+                    <!-- Los mensajes se cargarán dinámicamente -->
+                </div>
+
+                <!-- Input de mensaje -->
+                <div class="mensaje-input-container">
+                    <button class="icon-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M9 11.75c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zm6 0c-.69 0-1.25.56-1.25 1.25s.56 1.25 1.25 1.25 1.25-.56 1.25-1.25-.56-1.25-1.25-1.25zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8 0-.29.02-.58.05-.86 2.36-1.05 4.23-2.98 5.21-5.37C11.07 8.33 14.05 10 17.42 10c.78 0 1.53-.09 2.25-.26.21.71.33 1.47.33 2.26 0 4.41-3.59 8-8 8z"/>
+                        </svg>
+                    </button>
+                    <input type="text" id="mensaje-input" placeholder="Escribe un mensaje..." autocomplete="off">
+                    <button id="enviar-btn" class="send-btn">
+                        <svg viewBox="0 0 24 24" width="24" height="24">
+                            <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para crear sala -->
+    <div id="modal-crear-sala" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Crear Nueva Sala</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="text" id="nueva-sala-input" placeholder="Nombre de la sala..." maxlength="50">
+                <div id="crear-sala-error" class="error-message"></div>
+            </div>
+            <div class="modal-footer">
+                <button id="cancelar-sala-btn" class="btn-secondary">Cancelar</button>
+                <button id="confirmar-sala-btn" class="btn-primary">Crear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de información -->
+    <div id="modal-info" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Información</h2>
+                <button class="close-btn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>Participantes</h3>
+                <div id="participantes-lista" class="participantes-lista">
+                    <!-- Lista de participantes -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
