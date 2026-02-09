@@ -409,11 +409,18 @@ function enviarMensaje() {
     }
     
     input.value = '';
+    input.focus();
+    
+    // Asegurar scroll al fondo después de enviar
+    setTimeout(scrollToBottom, 100);
 }
 
 function mostrarMensaje(data) {
     const container = document.getElementById('mensajes-container');
     const esPropio = data.usuario === app.username;
+    
+    // Verificar si el usuario está cerca del fondo antes de agregar el mensaje
+    const estaEnFondo = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
     
     const div = document.createElement('div');
     div.className = `mensaje ${esPropio ? 'propio' : ''}`;
@@ -430,12 +437,20 @@ function mostrarMensaje(data) {
     `;
     
     container.appendChild(div);
-    scrollToBottom();
+    
+    // Solo hacer scroll automático si el usuario estaba cerca del fondo
+    // o si es su propio mensaje
+    if (estaEnFondo || esPropio) {
+        scrollToBottom();
+    }
 }
 
 function mostrarMensajePrivado(data) {
     const container = document.getElementById('mensajes-container');
     const esPropio = data.remitente === app.username;
+    
+    // Verificar si el usuario está cerca del fondo
+    const estaEnFondo = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
     
     const div = document.createElement('div');
     div.className = `mensaje ${esPropio ? 'propio' : ''}`;
@@ -453,7 +468,11 @@ function mostrarMensajePrivado(data) {
     `;
     
     container.appendChild(div);
-    scrollToBottom();
+    
+    // Scroll automático si estaba en el fondo o es mensaje propio
+    if (estaEnFondo || esPropio) {
+        scrollToBottom();
+    }
 }
 
 function mostrarMensajeSistema(texto) {
@@ -475,7 +494,12 @@ function mostrarMensajeSistema(texto) {
 // === UTILIDADES ===
 function scrollToBottom() {
     const container = document.getElementById('mensajes-container');
-    container.scrollTop = container.scrollHeight;
+    if (container) {
+        // Usar requestAnimationFrame para asegurar que el DOM se ha actualizado
+        requestAnimationFrame(() => {
+            container.scrollTop = container.scrollHeight;
+        });
+    }
 }
 
 function escapeHtml(text) {
